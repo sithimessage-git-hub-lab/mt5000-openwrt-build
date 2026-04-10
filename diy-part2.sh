@@ -4,14 +4,7 @@
 # ===============================================
 
 set -e
-
-# 确保在正确的目录下
-if [ -d "$GITHUB_WORKSPACE/openwrt" ]; then
-    cd "$GITHUB_WORKSPACE/openwrt"
-else
-    echo "错误：未找到 openwrt 目录！"
-    exit 1
-fi
+cd $GITHUB_WORKSPACE/openwrt
 
 echo "=== Applying GL-MT5000 device support ==="
 
@@ -22,18 +15,12 @@ echo "✓ Device tree file copied."
 
 # 2. 应用镜像定义补丁
 echo "Applying image definition patch..."
-# 使用绝对路径，确保文件存在
-SOURCE_FILE="$GITHUB_WORKSPACE/files/mt7987a-gl-mt5000.dts"
-if [ -f "$SOURCE_FILE" ]; then
-    cp -f "$SOURCE_FILE" ./target/linux/mediatek/dts/
-    echo "✓ Device tree file copied."
+if [ -f $GITHUB_WORKSPACE/files/filogic.mk.patch ]; then
+    patch -p1 -d ./target/linux/mediatek/image/ < $GITHUB_WORKSPACE/files/filogic.mk.patch
+    echo "✓ Image definition patched."
 else
-    echo "❌ 错误：设备树文件不存在于 $SOURCE_FILE"
-    echo "请检查文件是否已提交到仓库的 files/ 目录下。"
-    exit 1
+    echo "⚠ No patch file found, skipping."
 fi
-
-# ... 其余部分保持不变 ...
 
 # 3. 复制设备初始化脚本
 echo "Copying board initialization scripts..."
