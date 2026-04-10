@@ -7,20 +7,30 @@ set -e
 
 echo "=== 调试信息 ==="
 echo "当前目录: $(pwd)"
-echo "files目录内容:"
-ls -la files/ 2>/dev/null || echo "files目录不存在"
+echo "检查 openwrt 目录是否存在:"
+ls -la openwrt/ 2>/dev/null && echo "openwrt目录存在" || echo "openwrt目录不存在"
 echo "=== 调试结束 ==="
+
+# 进入 openwrt 目录
+if [ -d openwrt ]; then
+    cd openwrt
+    echo "已进入 openwrt 目录"
+else
+    echo "错误：openwrt 目录不存在"
+    exit 1
+fi
 
 echo "=== Applying GL-MT5000 device support ==="
 
 # 1. 复制设备树文件
 echo "Copying device tree file..."
-# 注意：现在当前目录是 openwrt/，所以 files/ 应该在这个目录下
 if [ -f files/mt7987a-gl-mt5000.dts ]; then
     cp -f files/mt7987a-gl-mt5000.dts target/linux/mediatek/dts/
     echo "✓ Device tree file copied."
 else
     echo "⚠ Device tree file not found: files/mt7987a-gl-mt5000.dts"
+    echo "当前目录内容:"
+    ls -la files/ 2>/dev/null || echo "files目录不存在"
     exit 1
 fi
 
