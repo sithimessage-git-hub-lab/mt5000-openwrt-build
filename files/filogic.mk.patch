@@ -1,9 +1,10 @@
 --- a/target/linux/mediatek/image/filogic.mk
 +++ b/target/linux/mediatek/image/filogic.mk
- @@ -1500,6 +1500,20 @@ Device/glinet_gl-mt3000
+@@ -1500,6 +1500,20 @@
  endef
+ 
  TARGET_DEVICES += glinet_gl-mt3000
-
++
 +define Device/glinet_gl-mt5000
 +  DEVICE_VENDOR := GL.iNet
 +  DEVICE_MODEL := GL-MT5000
@@ -16,8 +17,8 @@
 +  IMAGE/factory.bin := append-kernel | pad-to 32M | append-rootfs
 +  IMAGE/sysupgrade.bin := sysupgrade-tar | append-gl-metadata
 +endef
-+TARGET_DEVICES += glinet_gl-mt5000
 +
++TARGET_DEVICES += glinet_gl-mt5000
+ 
  define Device/glinet_gl-mt6000
    DEVICE_VENDOR := GL.iNet
-   DEVICE_MODEL := GL-MT6000
