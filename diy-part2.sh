@@ -7,16 +7,28 @@ set -e
 
 echo "=== 调试信息 ==="
 echo "当前目录: $(pwd)"
-echo "检查 openwrt 目录是否存在:"
-ls -la openwrt/ 2>/dev/null && echo "openwrt目录存在" || echo "openwrt目录不存在"
+echo "脚本路径: $0"
+echo "检查目录结构:"
+ls -la
 echo "=== 调试结束 ==="
 
-# 进入 openwrt 目录
-if [ -d openwrt ]; then
-    cd openwrt
-    echo "已进入 openwrt 目录"
-else
+# 检查 openwrt 目录是否存在
+if [ ! -d openwrt ]; then
     echo "错误：openwrt 目录不存在"
+    echo "当前目录内容:"
+    ls -la
+    exit 1
+fi
+
+# 进入 openwrt 目录
+cd openwrt
+echo "已进入 openwrt 目录，当前目录: $(pwd)"
+
+# 检查 files 目录是否存在
+if [ ! -d files ]; then
+    echo "错误：files 目录不存在于 openwrt/ 中"
+    echo "openwrt目录内容:"
+    ls -la
     exit 1
 fi
 
@@ -29,8 +41,8 @@ if [ -f files/mt7987a-gl-mt5000.dts ]; then
     echo "✓ Device tree file copied."
 else
     echo "⚠ Device tree file not found: files/mt7987a-gl-mt5000.dts"
-    echo "当前目录内容:"
-    ls -la files/ 2>/dev/null || echo "files目录不存在"
+    echo "files目录内容:"
+    ls -la files/
     exit 1
 fi
 
