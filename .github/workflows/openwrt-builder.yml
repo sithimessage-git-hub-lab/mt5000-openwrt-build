@@ -63,6 +63,15 @@ jobs:
         [ -e $FEEDS_CONF ] && mv $FEEDS_CONF openwrt/feeds.conf.default
         chmod +x $DIY_P1_SH
         cd openwrt
+        
+        # === 添加调试命令 ===
+        echo "当前工作目录: $(pwd)"
+        echo "GITHUB_WORKSPACE: $GITHUB_WORKSPACE"
+        echo "检查文件是否存在:"
+        ls -la $GITHUB_WORKSPACE/files/ || echo "files目录不存在"
+        ls -la $GITHUB_WORKSPACE/files/mt7987a-gl-mt5000.dts 2>/dev/null && echo "文件存在" || echo "文件不存在"
+        # === 调试结束 ===
+        
         $GITHUB_WORKSPACE/$DIY_P1_SH
 
     - name: Update feeds
