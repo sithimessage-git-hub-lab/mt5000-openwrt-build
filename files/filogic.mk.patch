@@ -15,8 +15,8 @@
 +  IMAGES += factory.bin
 +  IMAGE/factory.bin := append-kernel | pad-to 32M | append-rootfs
 +  IMAGE/sysupgrade.bin := sysupgrade-tar | append-gl-metadata
- endef
- TARGET_DEVICES += glinet_gl-mt5000
++endef
++TARGET_DEVICES += glinet_gl-mt5000
 +
  define Device/glinet_gl-mt6000
    DEVICE_VENDOR := GL.iNet
