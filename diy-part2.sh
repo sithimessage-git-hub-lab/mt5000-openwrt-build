@@ -5,6 +5,15 @@
 
 set -e
 
+# 调试：查看当前目录结构
+echo "=== 调试信息 ==="
+echo "当前目录: $(pwd)"
+echo "上级目录内容:"
+ls -la ../
+echo "files目录内容:"
+ls -la ../files/ 2>/dev/null || echo "files目录不存在"
+echo "=== 调试结束 ==="
+
 # 进入openwrt目录
 cd openwrt
 
