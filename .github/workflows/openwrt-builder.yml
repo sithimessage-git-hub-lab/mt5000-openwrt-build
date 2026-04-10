@@ -78,6 +78,19 @@ jobs:
         chmod +x $DIY_P2_SH
         ./$DIY_P2_SH
 
+    - name: Configure target device
+      run: |
+        cd openwrt
+        # 设置目标平台
+        echo "CONFIG_TARGET_mediatek=y" >> .config
+        echo "CONFIG_TARGET_mediatek_filogic=y" >> .config
+        # 选择 GL-MT5000 设备
+        echo "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_glinet_gl-mt5000=y" >> .config
+        # 取消选择其他设备
+        sed -i '/CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_openwrt_one/d' .config
+        # 重新生成配置
+        make defconfig
+
     - name: Download package
       id: package
       run: |
