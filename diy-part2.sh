@@ -46,17 +46,32 @@ else
     exit 1
 fi
 
-# 2. 应用镜像定义补丁（简化版本，直接尝试应用，失败则跳过）
+# 2. 应用镜像定义补丁
 echo "Applying image definition patch..."
 if [ -f files/filogic.mk.patch ]; then
-    echo "尝试应用补丁..."
-    # 尝试应用补丁，如果失败则跳过但不退出脚本
-    if patch -p1 -d target/linux/mediatek/image/ < files/filogic.mk.patch 2>/dev/null; then
-        echo "✓ Image definition patched."
+    echo "检查补丁文件格式..."
+    # 验证补丁文件格式
+    if head -n 1 files/filogic.mk.patch | grep -q "^--- a/"; then
+        echo "✓ 补丁文件格式正确"
+        echo "补丁文件内容预览："
+        head -n 25 files/filogic.mk.patch
+        
+        # 确保目标目录存在
+        mkdir -p target/linux/mediatek/image/
+        
+        # 应用补丁
+        echo "应用补丁到 target/linux/mediatek/image/filogic.mk..."
+        if patch -p1 -d target/linux/mediatek/image/ < files/filogic.mk.patch; then
+            echo "✓ Image definition patched."
+            echo "验证补丁应用结果："
+            grep -n "glinet_gl-mt5000" target/linux/mediatek/image/filogic.mk || echo "未找到设备定义"
+        else
+            echo "⚠ 补丁应用失败，但继续编译"
+        fi
     else
-        echo "⚠ 补丁应用失败，跳过此步骤继续编译"
-        echo "注意：这可能导致固件镜像定义不正确"
-        echo "补丁文件可能格式错误，建议后续修复"
+        echo "⚠ 补丁文件格式不正确"
+        echo "补丁文件前几行："
+        head -n 5 files/filogic.mk.patch
     fi
 else
     echo "⚠ No patch file found, skipping."
