@@ -1,6 +1,6 @@
 --- a/target/linux/mediatek/image/filogic.mk
 +++ b/target/linux/mediatek/image/filogic.mk
-@@ -1500,6 +1500,20 @@ Device/glinet_gl-mt3000
+ @@ -1500,6 +1500,20 @@ Device/glinet_gl-mt3000
  endef
  TARGET_DEVICES += glinet_gl-mt3000
 
