@@ -49,29 +49,61 @@ fi
 # 2. 应用镜像定义补丁
 echo "Applying image definition patch..."
 if [ -f files/filogic.mk.patch ]; then
-    echo "检查补丁文件格式..."
-    # 验证补丁文件格式
-    if head -n 1 files/filogic.mk.patch | grep -q "^--- a/"; then
-        echo "✓ 补丁文件格式正确"
-        echo "补丁文件内容预览："
-        head -n 25 files/filogic.mk.patch
-        
-        # 确保目标目录存在
+    echo "直接插入设备定义到 filogic.mk..."
+    
+    # 确保目标文件存在
+    if [ ! -f target/linux/mediatek/image/filogic.mk ]; then
+        echo "创建目标文件..."
         mkdir -p target/linux/mediatek/image/
+        touch target/linux/mediatek/image/filogic.mk
+    fi
+    
+    # 在 glinet_gl-mt3000 之后插入设备定义
+    if grep -q "glinet_gl-mt3000" target/linux/mediatek/image/filogic.mk; then
+        echo "找到 glinet_gl-mt3000，在其后插入 GL-MT5000 定义..."
         
-        # 应用补丁
-        echo "应用补丁到 target/linux/mediatek/image/filogic.mk..."
-        if patch -p1 -d target/linux/mediatek/image/ < files/filogic.mk.patch; then
-            echo "✓ Image definition patched."
-            echo "验证补丁应用结果："
-            grep -n "glinet_gl-mt5000" target/linux/mediatek/image/filogic.mk || echo "未找到设备定义"
-        else
-            echo "⚠ 补丁应用失败，但继续编译"
-        fi
+        # 创建要插入的内容
+        INSERT_CONTENT="\n\
+define Device/glinet_gl-mt5000\n\
+  DEVICE_VENDOR := GL.iNet\n\
+  DEVICE_MODEL := GL-MT5000\n\
+  DEVICE_DTS := mt7987a-gl-mt5000\n\
+  DEVICE_DTS_DIR := ../dts\n\
+  SUPPORTED_DEVICES := glinet,gl-mt5000\n\
+  DEVICE_PACKAGES := mkf2fs blkid blockdev kmod-fs-ext4 mt7987-2p5g-phy-firmware \\\\\n\
+                     kmod-mmc kmod-fs-f2fs kmod-fs-vfat\n\
+  IMAGES += factory.bin\n\
+  IMAGE/factory.bin := append-kernel | pad-to 32M | append-rootfs\n\
+  IMAGE/sysupgrade.bin := sysupgrade-tar | append-gl-metadata\n\
+endef\n\
+\n\
+TARGET_DEVICES += glinet_gl-mt5000\n"
+        
+        # 使用 sed 插入内容
+        sed -i '/glinet_gl-mt3000/a\'"$INSERT_CONTENT" target/linux/mediatek/image/filogic.mk
+        echo "✓ GL-MT5000 设备定义已插入"
     else
-        echo "⚠ 补丁文件格式不正确"
-        echo "补丁文件前几行："
-        head -n 5 files/filogic.mk.patch
+        echo "⚠ 未找到 glinet_gl-mt3000，将定义追加到文件末尾..."
+        
+        # 直接追加到文件末尾
+        cat >> target/linux/mediatek/image/filogic.mk << 'EOF'
+
+define Device/glinet_gl-mt5000
+  DEVICE_VENDOR := GL.iNet
+  DEVICE_MODEL := GL-MT5000
+  DEVICE_DTS := mt7987a-gl-mt5000
+  DEVICE_DTS_DIR := ../dts
+  SUPPORTED_DEVICES := glinet,gl-mt5000
+  DEVICE_PACKAGES := mkf2fs blkid blockdev kmod-fs-ext4 mt7987-2p5g-phy-firmware \
+                     kmod-mmc kmod-fs-f2fs kmod-fs-vfat
+  IMAGES += factory.bin
+  IMAGE/factory.bin := append-kernel | pad-to 32M | append-rootfs
+  IMAGE/sysupgrade.bin := sysupgrade-tar | append-gl-metadata
+endef
+
+TARGET_DEVICES += glinet_gl-mt5000
+EOF
+        echo "✓ GL-MT5000 设备定义已追加到文件末尾"
     fi
 else
     echo "⚠ No patch file found, skipping."
