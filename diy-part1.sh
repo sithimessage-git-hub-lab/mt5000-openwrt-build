@@ -13,6 +13,22 @@
 # Uncomment a feed source
 #sed -i 's/^#\(.*helloworld\)/\1/' feeds.conf.default
 
+#!/bin/bash
+# diy-part1.sh
+
+# 在克隆源码后，更新 feeds 前配置设备
+echo "配置 GL-MT5000 设备..."
+
+# 创建初始配置
+cat > .config << 'EOF'
+CONFIG_TARGET_mediatek=y
+CONFIG_TARGET_mediatek_filogic=y
+CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_glinet_gl-mt5000=y
+EOF
+
+echo "设备配置完成"
+
+
 # Add a feed source
 echo 'src-git helloworld https://github.com/fw876/helloworld' >>feeds.conf.default
 #echo 'src-git passwall https://github.com/xiaorouji/openwrt-passwall' >>feeds.conf.default
