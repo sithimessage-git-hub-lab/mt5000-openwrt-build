@@ -46,25 +46,17 @@ else
     exit 1
 fi
 
-# 2. 应用镜像定义补丁（跳过有问题的补丁）
+# 2. 应用镜像定义补丁（简化版本，直接尝试应用，失败则跳过）
 echo "Applying image definition patch..."
 if [ -f files/filogic.mk.patch ]; then
-    echo "检查补丁文件内容..."
-    # 检查补丁文件是否为空或无效
-    if [ ! -s files/filogic.mk.patch ]; then
-        echo "⚠ 补丁文件为空，跳过"
-    elif ! head -n 1 files/filogic.mk.patch | grep -q "^---\|^diff\|^Index:"; then
-        echo "⚠ 补丁文件格式无效，跳过"
-        echo "补丁文件前几行内容:"
-        head -n 5 files/filogic.mk.patch
+    echo "尝试应用补丁..."
+    # 尝试应用补丁，如果失败则跳过但不退出脚本
+    if patch -p1 -d target/linux/mediatek/image/ < files/filogic.mk.patch 2>/dev/null; then
+        echo "✓ Image definition patched."
     else
-        echo "尝试应用补丁..."
-        if patch -p1 -d target/linux/mediatek/image/ < files/filogic.mk.patch; then
-            echo "✓ Image definition patched."
-        else
-            echo "⚠ 补丁应用失败，跳过此步骤继续编译"
-            echo "注意：这可能导致固件镜像定义不正确"
-        fi
+        echo "⚠ 补丁应用失败，跳过此步骤继续编译"
+        echo "注意：这可能导致固件镜像定义不正确"
+        echo "补丁文件可能格式错误，建议后续修复"
     fi
 else
     echo "⚠ No patch file found, skipping."
