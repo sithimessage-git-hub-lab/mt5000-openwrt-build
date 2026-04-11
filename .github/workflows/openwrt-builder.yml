@@ -81,56 +81,22 @@ jobs:
     - name: Configure target device
       run: |
         cd openwrt
-        
-        echo "=== 强制选择 GL-MT5000 设备 ==="
-        
-        # 1. 备份原始配置（用于调试）
-        cp .config .config.backup
-        
-        # 2. 删除所有现有的设备选择
-        echo "删除现有设备选择..."
-        sed -i '/CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_/d' .config
-        
-        # 3. 设置目标平台
-        echo "设置目标平台..."
-        echo "CONFIG_TARGET_mediatek=y" >> .config
-        echo "CONFIG_TARGET_mediatek_filogic=y" >> .config
-        
-        # 4. 选择 GL-MT5000 设备
-        echo "选择 GL-MT5000 设备..."
-        echo "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_glinet_gl-mt5000=y" >> .config
-        
-        # 5. 验证配置
-        echo "=== 配置验证 ==="
-        echo "当前设备选择："
-        grep "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_" .config || echo "未找到设备选择"
-        
-        echo "目标平台配置："
-        grep "CONFIG_TARGET_mediatek" .config
-        
-        # 6. 不要运行 make defconfig（它会覆盖我们的选择）
-        # 直接使用我们的配置
-        
-        echo "=== 配置完成 ==="
-
-    - name: Debug - Check configuration
-      run: |
-        cd openwrt
-        echo "=== 调试：检查最终配置 ==="
-        echo "配置文件大小："
-        wc -l .config
-        echo ""
-        echo "设备相关配置："
-        grep -E "CONFIG_TARGET|CONFIG_TARGET_DEVICE" .config
-        echo ""
-        echo "GL-MT5000 配置状态："
+        echo "验证设备配置..."
+    
+        # 检查配置是否正确
         if grep -q "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_glinet_gl-mt5000=y" .config; then
-          echo "✅ GL-MT5000 设备已选择"
+            echo "✅ GL-MT5000 设备已选择"
         else
-          echo "❌ GL-MT5000 设备未选择"
-          echo "当前配置内容："
-          head -50 .config
+            echo "❌ GL-MT5000 设备未选择，强制选择..."
+            sed -i '/CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_/d' .config
+            echo "CONFIG_TARGET_mediatek=y" >> .config
+            echo "CONFIG_TARGET_mediatek_filogic=y" >> .config
+            echo "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_glinet_gl-mt5000=y" >> .config
         fi
+    
+        # 显示配置摘要
+        echo "配置摘要："
+        grep "CONFIG_TARGET" .config | head -10
 
     - name: Download package
       id: package
