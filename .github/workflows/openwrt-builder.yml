@@ -168,25 +168,19 @@ jobs:
 
     - name: Organize files
       id: organize
-      if: steps.compile.outputs.status == 'success' && !cancelled()
       run: |
         # 检查固件是否生成
         if [ -d "openwrt/bin/targets/mediatek/filogic" ]; then
             cd openwrt/bin/targets/mediatek/filogic
         
-            # 检查实际生成的固件文件
+            # 显示生成的固件
             echo "生成的固件文件："
-            ls -la *.bin *.img 2>/dev/null || echo "没有找到固件文件"
+            ls -la *.bin *.img || true
         
-            # 检查设备名称
-            echo "检查设备名称："
-            for file in *.bin *.img 2>/dev/null; do
-                if echo "$file" | grep -q "gl-mt5000\|glinet"; then
-                    echo "✅ 找到 GL-MT5000 固件: $file"
-                fi
-            done
-        
+            # 清理 packages 目录
             rm -rf packages
+        
+            # 设置环境变量
             echo "FIRMWARE=$PWD" >> $GITHUB_ENV
             echo "status=success" >> $GITHUB_OUTPUT
         else
