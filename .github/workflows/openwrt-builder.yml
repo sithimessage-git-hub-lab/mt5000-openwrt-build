@@ -1,15 +1,3 @@
-#
-# https://github.com/P3TERX/Actions-OpenWrt
-#
-# File: .github/workflows/openwrt-bulder.yml
-# Description: Build OpenWrt using GitHub Actions
-#
-# Copyright (c) 2019-2024 P3TERX <https://p3terx.com>
-#
-# This is free software, licensed under the MIT License.
-# See /LICENSE for more information.
-#
-
 name: OpenWrt Builder
 
 on:
@@ -78,33 +66,36 @@ jobs:
         chmod +x $DIY_P2_SH
         ./$DIY_P2_SH
 
-    - name: Configure target device
+    - name: Download package
+      id: package
       run: |
         cd openwrt
+        
+        # 1. 先运行 make defconfig 生成完整配置
+        echo "运行 make defconfig 生成完整配置..."
+        make defconfig
+        
+        # 2. 验证配置是否正确
         echo "验证设备配置..."
-    
-        # 检查配置是否正确
         if grep -q "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_glinet_gl-mt5000=y" .config; then
             echo "✅ GL-MT5000 设备已选择"
         else
             echo "❌ GL-MT5000 设备未选择，强制选择..."
             sed -i '/CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_/d' .config
-            echo "CONFIG_TARGET_mediatek=y" >> .config
-            echo "CONFIG_TARGET_mediatek_filogic=y" >> .config
             echo "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_glinet_gl-mt5000=y" >> .config
+            # 重新运行 defconfig
+            make defconfig
         fi
-    
-        # 显示配置摘要
+        
+        # 3. 显示配置摘要
         echo "配置摘要："
-        grep "CONFIG_TARGET" .config | head -10
-
-    - name: Download package
-      id: package
-      run: |
-        cd openwrt
-        # 注意：这里不要运行 make defconfig，它会覆盖我们的配置
-        # 直接运行 make download
+        grep "CONFIG_TARGET_DEVICE" .config
+        
+        # 4. 下载包
+        echo "开始下载包..."
         make download -j8
+        
+        # 5. 清理小文件
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
 
@@ -152,7 +143,8 @@ jobs:
       run: |
         echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
         touch release.txt
-        [ ${UPLOAD_GOFILE} = true && ${{ steps.gofile.outputs.url }} ] && echo "🔗 [GoFile](${{ steps.gofile.outputs.url }})" >> release.txt
+        echo "GL-MT5000 OpenWrt 固件" >> release.txt
+        echo "编译时间: $(date)" >> release.txt
         echo "status=success" >> $GITHUB_OUTPUT
 
     - name: Upload firmware to release
