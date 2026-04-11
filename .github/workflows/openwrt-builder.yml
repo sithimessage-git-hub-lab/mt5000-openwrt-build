@@ -86,7 +86,7 @@ jobs:
         
         # 3. 重新设置基础配置
         echo "重新设置基础配置..."
-        cat >> .config << 'EOF'
+cat >> .config << 'EOF'
 CONFIG_TARGET_mediatek=y
 CONFIG_TARGET_mediatek_filogic=y
 CONFIG_TARGET_BOARD="mediatek"
