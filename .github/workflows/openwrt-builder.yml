@@ -71,31 +71,41 @@ jobs:
       run: |
         cd openwrt
         
-        # 1. 先运行 make defconfig 生成完整配置
-        echo "运行 make defconfig 生成完整配置..."
+        # 1. 先运行 make defconfig 生成基础配置
+        echo "运行 make defconfig 生成基础配置..."
         make defconfig
         
-        # 2. 验证配置是否正确
+        # 2. 在 defconfig 之后设置 GL-MT5000 设备
+        echo "设置 GL-MT5000 设备配置..."
+        
+        # 删除现有的设备配置
+        sed -i '/CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_/d' .config
+        sed -i '/CONFIG_TARGET_mediatek_filogic/d' .config
+        sed -i '/CONFIG_TARGET_mediatek/d' .config
+        
+        # 添加 GL-MT5000 配置
+        echo "CONFIG_TARGET_mediatek=y" >> .config
+        echo "CONFIG_TARGET_mediatek_filogic=y" >> .config
+        echo "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_glinet_gl-mt5000=y" >> .config
+        
+        # 3. 验证配置
         echo "验证设备配置..."
         if grep -q "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_glinet_gl-mt5000=y" .config; then
             echo "✅ GL-MT5000 设备已选择"
         else
-            echo "❌ GL-MT5000 设备未选择，强制选择..."
-            sed -i '/CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_/d' .config
-            echo "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_glinet_gl-mt5000=y" >> .config
-            # 重新运行 defconfig
-            make defconfig
+            echo "❌ GL-MT5000 设备未选择"
+            exit 1
         fi
         
-        # 3. 显示配置摘要
+        # 4. 显示配置摘要
         echo "配置摘要："
-        grep "CONFIG_TARGET_DEVICE" .config
+        grep "CONFIG_TARGET" .config | head -10
         
-        # 4. 下载包
+        # 5. 下载包
         echo "开始下载包..."
         make download -j8
         
-        # 5. 清理小文件
+        # 6. 清理小文件
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
 
@@ -137,14 +147,25 @@ jobs:
         name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
         path: ${{ env.FIRMWARE }}
 
+    - name: Prepare release files
+      if: env.UPLOAD_RELEASE == 'true' && !cancelled()
+      run: |
+        # 创建 release.txt
+        echo "GL-MT5000 OpenWrt 固件" > release.txt
+        echo "编译时间: $(date)" >> release.txt
+        echo "设备: GL.iNet GL-MT5000" >> release.txt
+        echo "OpenWrt 版本: v25.12.2" >> release.txt
+        echo "" >> release.txt
+        echo "包含插件:" >> release.txt
+        echo "- helloworld (SSR Plus+)" >> release.txt
+        echo "- LuCI 界面" >> release.txt
+        echo "- 基础网络功能" >> release.txt
+
     - name: Generate release tag
       id: tag
       if: env.UPLOAD_RELEASE == 'true' && !cancelled()
       run: |
         echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
-        touch release.txt
-        echo "GL-MT5000 OpenWrt 固件" >> release.txt
-        echo "编译时间: $(date)" >> release.txt
         echo "status=success" >> $GITHUB_OUTPUT
 
     - name: Upload firmware to release
