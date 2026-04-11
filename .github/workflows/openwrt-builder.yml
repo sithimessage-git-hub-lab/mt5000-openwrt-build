@@ -74,33 +74,33 @@ jobs:
         # 1. 先运行 make defconfig 生成基础配置
         echo "运行 make defconfig 生成基础配置..."
         make defconfig
-    
+        
         # 2. 清除所有冲突的设备配置
         echo "清除所有冲突的设备配置..."
-    
+        
         # 删除所有设备配置
         sed -i '/CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_/d' .config
-    
+        
         # 删除所有目标配置
         sed -i '/^CONFIG_TARGET_/d' .config
-    
-        # 3. 重新设置基础配置（不包含设备配置）
+        
+        # 3. 重新设置基础配置
         echo "重新设置基础配置..."
         cat >> .config << 'EOF'
-        CONFIG_TARGET_mediatek=y
-        CONFIG_TARGET_mediatek_filogic=y
-        CONFIG_TARGET_BOARD="mediatek"
-        CONFIG_TARGET_SUBTARGET="filogic"
-        CONFIG_TARGET_ARCH_PACKAGES="aarch64_cortex-a53"
-        CONFIG_TARGET_ROOTFS_SQUASHFS=y
-        CONFIG_TARGET_ROOTFS_INITRAMFS=y
-        EOF
-    
-        # 4. 在 defconfig 之前添加 GL-MT5000 设备配置
+CONFIG_TARGET_mediatek=y
+CONFIG_TARGET_mediatek_filogic=y
+CONFIG_TARGET_BOARD="mediatek"
+CONFIG_TARGET_SUBTARGET="filogic"
+CONFIG_TARGET_ARCH_PACKAGES="aarch64_cortex-a53"
+CONFIG_TARGET_ROOTFS_SQUASHFS=y
+CONFIG_TARGET_ROOTFS_INITRAMFS=y
+EOF
+        
+        # 4. 添加 GL-MT5000 设备配置
         echo "添加 GL-MT5000 设备配置..."
         echo "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_glinet_gl-mt5000=y" >> .config
-    
-        # 5. 验证配置（不要再次运行 defconfig！）
+        
+        # 5. 验证配置
         echo "验证设备配置..."
         if grep -q "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_glinet_gl-mt5000=y" .config; then
             echo "✅ GL-MT5000 设备已选择"
@@ -112,11 +112,11 @@ jobs:
             grep "CONFIG_TARGET_DEVICE" .config
             exit 1
         fi
-    
+        
         # 6. 下载包
         echo "开始下载包..."
         make download -j8
-    
+        
         # 7. 清理小文件
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
@@ -127,7 +127,7 @@ jobs:
         echo "=== 最终配置检查 ==="
         echo "1. 设备配置："
         grep "CONFIG_TARGET_DEVICE" .config
-    
+        
         echo "2. 检查是否有多个设备被选择："
         device_count=$(grep -c "CONFIG_TARGET_DEVICE.*=y" .config)
         if [ "$device_count" -eq 1 ]; then
@@ -137,7 +137,7 @@ jobs:
             grep "CONFIG_TARGET_DEVICE.*=y" .config
             exit 1
         fi
-
+        
         echo "3. 检查是否是 GL-MT5000："
         if grep -q "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_glinet_gl-mt5000=y" .config; then
             echo "✅ 正确选择了 GL-MT5000"
@@ -145,6 +145,14 @@ jobs:
             echo "❌ 没有选择 GL-MT5000"
             exit 1
         fi
+
+    - name: Clean build environment
+      run: |
+        cd openwrt
+        echo "清理编译环境，修复符号链接问题..."
+        # 清理可能导致符号链接循环的目录
+        rm -rf staging_dir/toolchain-aarch64_cortex-a53_gcc-14.3.0_musl/bin
+        mkdir -p staging_dir/toolchain-aarch64_cortex-a53_gcc-14.3.0_musl/bin
 
     - name: Compile the firmware
       id: compile
@@ -163,19 +171,17 @@ jobs:
             grep "CONFIG_TARGET_DEVICE" .config
             exit 1
         fi
-    
+        
         # 2. 显示编译信息
         echo "编译信息："
         make info 2>&1 | grep -E "Target:|Target System:|Subtarget:|Target Profile:" || true
-    
+        
         # 3. 开始编译
         echo -e "$(nproc) thread compile"
-        make -j$(nproc) || make -j1 || make -j1 V=s
-    
+        make -j$(nproc) || make -j1 V=s
+        
         # 4. 设置输出变量
         echo "status=success" >> $GITHUB_OUTPUT
-    
-        # 修复：直接设置设备名称，不依赖 grep 提取
         echo "glinet_gl-mt5000" > DEVICE_NAME
         echo "DEVICE_NAME=_glinet_gl-mt5000" >> $GITHUB_ENV
         echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
@@ -193,18 +199,19 @@ jobs:
 
     - name: Organize files
       id: organize
+      if: steps.compile.outputs.status == 'success' && !cancelled()
       run: |
         # 检查固件是否生成
         if [ -d "openwrt/bin/targets/mediatek/filogic" ]; then
             cd openwrt/bin/targets/mediatek/filogic
-        
+            
             # 显示生成的固件
             echo "生成的固件文件："
             ls -la *.bin *.img || true
-        
+            
             # 清理 packages 目录
             rm -rf packages
-        
+            
             # 设置环境变量
             echo "FIRMWARE=$PWD" >> $GITHUB_ENV
             echo "status=success" >> $GITHUB_OUTPUT
