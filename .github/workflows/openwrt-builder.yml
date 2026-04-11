@@ -75,41 +75,46 @@ jobs:
         echo "运行 make defconfig 生成基础配置..."
         make defconfig
         
-        # 2. 在 defconfig 之后设置 GL-MT5000 设备
+        # 2. 清除所有目标配置
+        echo "清除所有目标配置..."
+        sed -i '/^CONFIG_TARGET_/d' .config
+        
+        # 3. 直接设置 GL-MT5000 配置（避免交互式选择）
         echo "设置 GL-MT5000 设备配置..."
+        cat >> .config << 'EOF'
+        CONFIG_TARGET_mediatek=y
+        CONFIG_TARGET_mediatek_filogic=y
+        CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_glinet_gl-mt5000=y
+        CONFIG_TARGET_BOARD="mediatek"
+        CONFIG_TARGET_SUBTARGET="filogic"
+        CONFIG_TARGET_PROFILE="DEVICE_glinet_gl-mt5000"
+        CONFIG_TARGET_ARCH_PACKAGES="aarch64_cortex-a53"
+        CONFIG_TARGET_ROOTFS_SQUASHFS=y
+        CONFIG_TARGET_ROOTFS_INITRAMFS=y
+        EOF
         
-        # 删除现有的设备配置
-        sed -i '/CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_/d' .config
-        sed -i '/CONFIG_TARGET_mediatek_filogic/d' .config
-        sed -i '/CONFIG_TARGET_mediatek/d' .config
+        # 4. 使用非交互式方式运行 oldconfig
+        echo "运行非交互式 make oldconfig..."
+        yes "" | make oldconfig 2>/dev/null || true
         
-        # 添加 GL-MT5000 配置
-        echo "CONFIG_TARGET_mediatek=y" >> .config
-        echo "CONFIG_TARGET_mediatek_filogic=y" >> .config
-        echo "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_glinet_gl-mt5000=y" >> .config
-        
-        # 3. 运行 make oldconfig 同步配置
-        echo "运行 make oldconfig 同步配置..."
-        echo "" | make oldconfig 2>/dev/null || true
-        
-        # 4. 验证配置
+        # 5. 验证配置
         echo "验证设备配置..."
         if grep -q "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_glinet_gl-mt5000=y" .config; then
             echo "✅ GL-MT5000 设备已选择"
             echo "当前目标配置："
-            grep "^CONFIG_TARGET" .config
+            grep "^CONFIG_TARGET" .config | head -20
         else
             echo "❌ GL-MT5000 设备未选择"
             echo "当前配置："
-            grep "CONFIG_TARGET" .config
+            grep "CONFIG_TARGET_DEVICE" .config
             exit 1
         fi
         
-        # 5. 下载包
+        # 6. 下载包
         echo "开始下载包..."
         make download -j8
         
-        # 6. 清理小文件
+        # 7. 清理小文件
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
 
@@ -134,9 +139,9 @@ jobs:
       run: |
         cd openwrt
         
-        # 1. 编译前再次同步配置
+        # 1. 编译前再次同步配置（非交互式）
         echo "编译前同步配置..."
-        echo "" | make oldconfig 2>/dev/null || true
+        yes "" | make oldconfig 2>/dev/null || true
         
         # 2. 验证最终配置
         echo "最终配置验证："
@@ -178,12 +183,20 @@ jobs:
 
     - name: Organize files
       id: organize
-      if: env.UPLOAD_FIRMWARE == 'true' && !cancelled()
+      if: steps.compile.outputs.status == 'success' && !cancelled()
       run: |
-        cd openwrt/bin/targets/*/*
-        rm -rf packages
-        echo "FIRMWARE=$PWD" >> $GITHUB_ENV
-        echo "status=success" >> $GITHUB_OUTPUT
+        # 检查固件是否生成
+        if [ -d "openwrt/bin/targets/mediatek/filogic" ]; then
+            cd openwrt/bin/targets/mediatek/filogic
+            rm -rf packages
+            echo "FIRMWARE=$PWD" >> $GITHUB_ENV
+            echo "status=success" >> $GITHUB_OUTPUT
+        else
+            echo "❌ 固件目录不存在"
+            echo "检查目录结构："
+            find openwrt/bin -type d | head -20
+            exit 1
+        fi
 
     - name: Upload firmware directory
       uses: actions/upload-artifact@main
