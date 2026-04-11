@@ -75,37 +75,30 @@ jobs:
         echo "运行 make defconfig 生成基础配置..."
         make defconfig
     
-        # 2. 使用脚本直接配置 GL-MT5000
-        echo "使用脚本配置 GL-MT5000..."
-        cat > config_gl-mt5000.sh << 'EOF'
-        #!/bin/bash
-        echo "使用 scripts/config 工具配置..."
-    
-        # 确保 scripts/config 存在
-        if [ ! -f scripts/config/conf ]; then
-            echo "编译 scripts/config..."
-            make -C scripts/config conf 2>/dev/null || true
-        fi
+        # 2. 直接编辑 .config 文件（最简单可靠的方法）
+        echo "直接编辑 .config 文件配置 GL-MT5000..."
     
         # 清除所有目标配置
-        ./scripts/config --undef CONFIG_TARGET_mediatek
-        ./scripts/config --undef CONFIG_TARGET_mediatek_filogic
-        ./scripts/config --undef CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_glinet_gl-mt5000
+        sed -i '/^CONFIG_TARGET_/d' .config
     
-        # 设置 GL-MT5000 配置
-        ./scripts/config --set-val CONFIG_TARGET_mediatek y
-        ./scripts/config --set-val CONFIG_TARGET_mediatek_filogic y
-        ./scripts/config --set-val CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_glinet_gl-mt5000 y
-        ./scripts/config --set-val CONFIG_TARGET_ROOTFS_SQUASHFS y
-        ./scripts/config --set-val CONFIG_TARGET_ROOTFS_INITRAMFS y
-    
-        echo "配置完成"
+        # 添加 GL-MT5000 配置
+        cat >> .config << 'EOF'
+        CONFIG_TARGET_mediatek=y
+        CONFIG_TARGET_mediatek_filogic=y
+        CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_glinet_gl-mt5000=y
+        CONFIG_TARGET_BOARD="mediatek"
+        CONFIG_TARGET_SUBTARGET="filogic"
+        CONFIG_TARGET_PROFILE="DEVICE_glinet_gl-mt5000"
+        CONFIG_TARGET_ARCH_PACKAGES="aarch64_cortex-a53"
+        CONFIG_TARGET_ROOTFS_SQUASHFS=y
+        CONFIG_TARGET_ROOTFS_INITRAMFS=y
         EOF
     
-        chmod +x config_gl-mt5000.sh
-        ./config_gl-mt5000.sh
+        # 3. 运行 make defconfig 来应用配置（而不是 oldconfig）
+        echo "运行 make defconfig 应用配置..."
+        make defconfig
     
-        # 3. 验证配置
+        # 4. 验证配置
         echo "验证设备配置..."
         if grep -q "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_glinet_gl-mt5000=y" .config; then
             echo "✅ GL-MT5000 设备已选择"
@@ -114,15 +107,15 @@ jobs:
         else
             echo "❌ GL-MT5000 设备未选择"
             echo "当前配置："
-            grep "CONFIG_TARGET" .config
+            grep "CONFIG_TARGET_DEVICE" .config
             exit 1
         fi
     
-        # 4. 下载包
+        # 5. 下载包
         echo "开始下载包..."
         make download -j8
     
-        # 5. 清理小文件
+        # 6. 清理小文件
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
 
