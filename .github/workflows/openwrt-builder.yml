@@ -74,32 +74,30 @@ jobs:
         # 1. 先运行 make defconfig 生成基础配置
         echo "运行 make defconfig 生成基础配置..."
         make defconfig
-        
+    
         # 2. 清除所有冲突的设备配置
         echo "清除所有冲突的设备配置..."
-        
+    
         # 删除所有设备配置
         sed -i '/CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_/d' .config
-        
+    
         # 删除所有目标配置
         sed -i '/^CONFIG_TARGET_/d' .config
-        
-        # 3. 重新设置基础配置
+    
+        # 3. 重新设置基础配置（一行一行添加，避免 EOF 问题）
         echo "重新设置基础配置..."
-        cat >> .config << 'EOF'
-CONFIG_TARGET_mediatek=y
-CONFIG_TARGET_mediatek_filogic=y
-CONFIG_TARGET_BOARD="mediatek"
-CONFIG_TARGET_SUBTARGET="filogic"
-CONFIG_TARGET_ARCH_PACKAGES="aarch64_cortex-a53"
-CONFIG_TARGET_ROOTFS_SQUASHFS=y
-CONFIG_TARGET_ROOTFS_INITRAMFS=y
-EOF
-        
+        echo "CONFIG_TARGET_mediatek=y" >> .config
+        echo "CONFIG_TARGET_mediatek_filogic=y" >> .config
+        echo 'CONFIG_TARGET_BOARD="mediatek"' >> .config
+        echo 'CONFIG_TARGET_SUBTARGET="filogic"' >> .config
+        echo 'CONFIG_TARGET_ARCH_PACKAGES="aarch64_cortex-a53"' >> .config
+        echo "CONFIG_TARGET_ROOTFS_SQUASHFS=y" >> .config
+        echo "CONFIG_TARGET_ROOTFS_INITRAMFS=y" >> .config
+    
         # 4. 添加 GL-MT5000 设备配置
         echo "添加 GL-MT5000 设备配置..."
         echo "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_glinet_gl-mt5000=y" >> .config
-        
+    
         # 5. 验证配置
         echo "验证设备配置..."
         if grep -q "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_glinet_gl-mt5000=y" .config; then
@@ -112,11 +110,11 @@ EOF
             grep "CONFIG_TARGET_DEVICE" .config
             exit 1
         fi
-        
+    
         # 6. 下载包
         echo "开始下载包..."
         make download -j8
-        
+    
         # 7. 清理小文件
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
