@@ -88,18 +88,22 @@ jobs:
         echo "CONFIG_TARGET_mediatek_filogic=y" >> .config
         echo "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_glinet_gl-mt5000=y" >> .config
         
-        # 3. 验证配置
+        # 3. 运行 make oldconfig 同步配置
+        echo "运行 make oldconfig 同步配置..."
+        echo "" | make oldconfig 2>/dev/null || true
+        
+        # 4. 验证配置
         echo "验证设备配置..."
         if grep -q "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_glinet_gl-mt5000=y" .config; then
             echo "✅ GL-MT5000 设备已选择"
+            echo "当前目标配置："
+            grep "^CONFIG_TARGET" .config
         else
             echo "❌ GL-MT5000 设备未选择"
+            echo "当前配置："
+            grep "CONFIG_TARGET" .config
             exit 1
         fi
-        
-        # 4. 显示配置摘要
-        echo "配置摘要："
-        grep "CONFIG_TARGET" .config | head -10
         
         # 5. 下载包
         echo "开始下载包..."
@@ -109,12 +113,53 @@ jobs:
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
 
+    - name: Debug - Final config check
+      run: |
+        cd openwrt
+        echo "=== 最终配置检查 ==="
+        echo "1. 设备配置："
+        grep "CONFIG_TARGET_DEVICE" .config
+        
+        echo "2. 架构配置："
+        grep "CONFIG_TARGET_ARCH\|CONFIG_ARCH" .config
+        
+        echo "3. 完整目标配置："
+        grep "^CONFIG_TARGET" .config
+        
+        echo "4. 检查 make info 输出："
+        make info 2>&1 | grep -A10 "Target:" || true
+
     - name: Compile the firmware
       id: compile
       run: |
         cd openwrt
+        
+        # 1. 编译前再次同步配置
+        echo "编译前同步配置..."
+        echo "" | make oldconfig 2>/dev/null || true
+        
+        # 2. 验证最终配置
+        echo "最终配置验证："
+        if grep -q "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_glinet_gl-mt5000=y" .config; then
+            echo "✅ GL-MT5000 设备配置正确"
+            echo "设备配置："
+            grep "CONFIG_TARGET_DEVICE" .config
+        else
+            echo "❌ GL-MT5000 设备配置错误"
+            echo "当前配置："
+            grep "CONFIG_TARGET" .config
+            exit 1
+        fi
+        
+        # 3. 显示编译信息
+        echo "编译信息："
+        make info 2>&1 | grep -E "Target:|Target System:|Subtarget:|Target Profile:" || true
+        
+        # 4. 开始编译
         echo -e "$(nproc) thread compile"
         make -j$(nproc) || make -j1 || make -j1 V=s
+        
+        # 5. 设置输出变量
         echo "status=success" >> $GITHUB_OUTPUT
         grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
         [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
