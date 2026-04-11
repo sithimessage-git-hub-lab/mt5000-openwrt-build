@@ -18,15 +18,4 @@
 echo 'src-git helloworld https://github.com/fw876/helloworld.git' >>feeds.conf.default
 #echo 'src-git passwall https://github.com/xiaorouji/openwrt-passwall' >>feeds.conf.default
 
-# 配置 GL-MT5000 设备
-echo "配置 GL-MT5000 设备..."
-
-# 创建最简单的配置，只设置设备选择
-# 其他配置让 make defconfig 自动生成
-cat > .config << 'EOF'
-CONFIG_TARGET_mediatek=y
-CONFIG_TARGET_mediatek_filogic=y
-CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_glinet_gl-mt5000=y
-EOF
-
-echo "设备配置完成"
+echo "已添加 helloworld feed 源"
