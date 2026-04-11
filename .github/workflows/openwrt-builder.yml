@@ -75,21 +75,41 @@ jobs:
         echo "运行 make defconfig 生成基础配置..."
         make defconfig
     
-        # 2. 直接设置 GL-MT5000 配置
-        echo "设置 GL-MT5000 设备配置..."
+        # 2. 清除所有冲突的设备配置
+        echo "清除所有冲突的设备配置..."
     
-        # 删除现有的设备配置
+        # 删除所有设备配置
         sed -i '/CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_/d' .config
     
-        # 添加 GL-MT5000 配置
+        # 删除所有目标配置
+        sed -i '/^CONFIG_TARGET_/d' .config
+    
+        # 3. 重新设置基础配置
+        echo "重新设置基础配置..."
+        cat >> .config << 'EOF'
+    CONFIG_TARGET_mediatek=y
+    CONFIG_TARGET_mediatek_filogic=y
+    CONFIG_TARGET_BOARD="mediatek"
+    CONFIG_TARGET_SUBTARGET="filogic"
+    CONFIG_TARGET_ARCH_PACKAGES="aarch64_cortex-a53"
+    CONFIG_TARGET_ROOTFS_SQUASHFS=y
+    CONFIG_TARGET_ROOTFS_INITRAMFS=y
+    EOF
+    
+        # 4. 运行 make defconfig 应用基础配置
+        echo "运行 make defconfig 应用基础配置..."
+        make defconfig
+    
+        # 5. 在 defconfig 之后添加 GL-MT5000 设备配置
+        echo "添加 GL-MT5000 设备配置..."
         echo "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_glinet_gl-mt5000=y" >> .config
     
-        # 3. 验证配置（不要运行 oldconfig！）
+        # 6. 验证配置
         echo "验证设备配置..."
         if grep -q "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_glinet_gl-mt5000=y" .config; then
             echo "✅ GL-MT5000 设备已选择"
             echo "当前目标配置："
-            grep "^CONFIG_TARGET" .config | head -10
+            grep "^CONFIG_TARGET" .config | head -20
         else
             echo "❌ GL-MT5000 设备未选择"
             echo "当前配置："
@@ -97,11 +117,11 @@ jobs:
             exit 1
         fi
     
-        # 4. 下载包
+        # 7. 下载包
         echo "开始下载包..."
         make download -j8
     
-        # 5. 清理小文件
+        # 8. 清理小文件
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
 
@@ -111,15 +131,24 @@ jobs:
         echo "=== 最终配置检查 ==="
         echo "1. 设备配置："
         grep "CONFIG_TARGET_DEVICE" .config
-        
-        echo "2. 架构配置："
-        grep "CONFIG_TARGET_ARCH\|CONFIG_ARCH" .config
-        
-        echo "3. 完整目标配置："
-        grep "^CONFIG_TARGET" .config
-        
-        echo "4. 检查 make info 输出："
-        make info 2>&1 | grep -A10 "Target:" || true
+    
+        echo "2. 检查是否有多个设备被选择："
+        device_count=$(grep -c "CONFIG_TARGET_DEVICE.*=y" .config)
+        if [ "$device_count" -eq 1 ]; then
+            echo "✅ 只有一个设备被选择"
+        else
+            echo "❌ 有 $device_count 个设备被选择，应该只有 1 个"
+            grep "CONFIG_TARGET_DEVICE.*=y" .config
+            exit 1
+        fi
+    
+        echo "3. 检查是否是 GL-MT5000："
+        if grep -q "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_glinet_gl-mt5000=y" .config; then
+            echo "✅ 正确选择了 GL-MT5000"
+        else
+            echo "❌ 没有选择 GL-MT5000"
+            exit 1
+        fi
 
     - name: Compile the firmware
       id: compile
